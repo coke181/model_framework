@@ -1,0 +1,17 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "hello_service.exe",
+      "name": "hello_service",
+      "args": [],
+      "currentDir": "${workspaceRoot}",
+      "env": {
+        "HELLO_SERVICE_GM_TOKEN": "dev-gm-token"
+      }
+    }
+  ]
+}

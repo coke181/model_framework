@@ -1,0 +1,18 @@
+[Unit]
+Description=UE Game Backend Task Worker
+After=network.target redis.service mysqld.service mariadb.service
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ue-game-backend/model
+EnvironmentFile=/opt/ue-game-backend/model/scripts/linux/deploy.env
+ExecStart=/opt/ue-game-backend/model/scripts/linux/start-hello-task-worker.sh
+Restart=always
+RestartSec=3
+User=game
+Group=game
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

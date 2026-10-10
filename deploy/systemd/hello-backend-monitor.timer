@@ -1,0 +1,11 @@
+[Unit]
+Description=Run UE Game Backend Infrastructure Monitor Every Minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=hello-backend-monitor.service
+
+[Install]
+WantedBy=timers.target

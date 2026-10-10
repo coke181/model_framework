@@ -1,0 +1,10 @@
+[Unit]
+Description=UE Game Backend Infrastructure Monitor
+After=network-online.target hello-service.service hello-chat-gateway.service hello-task-worker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/hello-service/hello-service.env
+ExecStart=/opt/hello-service/scripts/linux/monitor-backend.sh
+User=root
+Group=root

@@ -1,0 +1,354 @@
+### 文件职责：
+### 1. 提供 hello_service 本地联调用的 HTTP 请求样例。
+### 2. 覆盖管理员引导、管理员登录、玩家查询、封号、禁言、发邮件、公告、查任务、查审计。
+### 3. 方便你在 VS Code REST Client / JetBrains HTTP Client 里直接点请求做 review。
+###
+### 调用流程：
+### 1. 先 F5 启动 hello_service。
+### 2. 先跑 health，确认 8080 已监听。
+### 3. 跑“注册管理员账号” -> “bootstrap 管理员” -> “管理员登录”。
+### 4. 再跑“注册普通玩家账号”或改成你已有玩家。
+### 5. 最后按需测试查玩家、封号、禁言、邮件、公告、任务、审计。
+###
+### 使用说明：
+### 1. 如果某个注册请求提示 login_name 已存在，直接改下面变量重新发一次即可。
+### 2. 这个文件默认假设服务监听在 127.0.0.1:8080。
+### 3. 当前 F5 调试配置里默认注入了 HELLO_SERVICE_GM_TOKEN=dev-gm-token，所以这里也默认用这个值。
+
+@host = 127.0.0.1
+@port = 8080
+@baseUrl = http://{{host}}:{{port}}
+@gmToken = dev-gm-token
+
+### 建议第一次先不要改，跑通后再替换成你自己的联调账号。
+@adminLoginName = admin_demo
+@adminDisplayName = 管理员演示号
+@adminPassword = AdminDemo_123456
+
+@playerLoginName = player_demo
+@playerDisplayName = 玩家演示号
+@playerPassword = PlayerDemo_123456
+
+### 说明：
+### 1. 下面很多请求都引用前面请求的响应值。
+### 2. 如果你用的是 VS Code 的 REST Client 扩展，这种 {{request.response.body.$.path}} 写法可直接取值。
+### 3. 如果你的 HTTP 客户端不支持响应变量，就把返回 JSON 里的 token / account_id / player_id 手工复制到请求里即可。
+
+###
+### 基础健康检查
+###
+
+GET {{baseUrl}}/health
+
+###
+### 抓取当前进程指标
+### 可直接看到 HTTP 请求总数、请求耗时直方图、后台任务执行总数和执行耗时。
+###
+
+GET {{baseUrl}}/metrics
+
+###
+### 查看最近 tracing span
+### 这里能直接看到 HTTP 根 span、后台任务执行 span、MySQL 仓储 span 是否共用同一个 trace_id。
+###
+
+GET {{baseUrl}}/debug/traces
+
+###
+### 注册管理员账号
+### 成功后会返回 account / player / session。
+### 如果报重复，改 @adminLoginName 再发一次。
+###
+
+# @name registerAdmin
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "login_name": "{{adminLoginName}}",
+  "display_name": "{{adminDisplayName}}",
+  "password": "{{adminPassword}}",
+  "register_source": "local_http_debug",
+  "platform_channel": "dev"
+}
+
+###
+### 用启动时 GM token 引导成管理员
+### 这里一次性把常用后台权限都配上，方便你后续把运营面完整点一遍。
+###
+
+# @name bootstrapAdmin
+POST {{baseUrl}}/admin/bootstrap
+Content-Type: application/json
+X-GM-Token: {{gmToken}}
+
+{
+  "account_id": "{{registerAdmin.response.body.$.data.account.account_id}}",
+  "operator_name": "super_admin",
+  "active": true,
+  "permissions": [
+    "admin.query",
+    "admin.audit_read",
+    "admin.user_manage",
+    "admin.account_status",
+    "admin.blacklist",
+    "admin.chat_mute",
+    "admin.chat_announce",
+    "admin.task_announce",
+    "admin.mail_send",
+    "admin.batch_mail",
+    "admin.reward_grant",
+    "admin.batch_reward",
+    "admin.reward_template"
+  ]
+}
+
+###
+### 管理员登录
+### 这一步会复用正式账号密码登录，再校验该账号是否已经映射为管理员。
+###
+
+# @name adminLogin
+POST {{baseUrl}}/admin/login
+Content-Type: application/json
+
+{
+  "login_name": "{{adminLoginName}}",
+  "password": "{{adminPassword}}",
+  "single_session": true
+}
+
+###
+### 看当前管理员信息
+###
+
+GET {{baseUrl}}/admin/me
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+###
+### 注册普通玩家账号
+### 如果重复，也可以直接改 @playerLoginName 再发一次。
+###
+
+# @name registerPlayer
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "login_name": "{{playerLoginName}}",
+  "display_name": "{{playerDisplayName}}",
+  "password": "{{playerPassword}}",
+  "register_source": "local_http_debug",
+  "platform_channel": "dev"
+}
+
+###
+### 查账号
+### 这里直接查管理员账号，确认后台查询链路和账号字段是否正常。
+###
+
+POST {{baseUrl}}/admin/query/account
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "account_id": "{{adminLogin.response.body.$.data.account.account_id}}"
+}
+
+###
+### 查玩家详情
+### 这里直接查刚注册的普通玩家。
+###
+
+POST {{baseUrl}}/admin/query/player
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "player_id": "{{registerPlayer.response.body.$.data.player.player_id}}"
+}
+
+###
+### 查玩家列表
+### 支持分页和昵称关键字过滤，方便你先看后台表格是否正常吃分页结构。
+###
+
+POST {{baseUrl}}/admin/query/players
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "nickname": "玩家",
+  "limit": 20,
+  "offset": 0
+}
+
+###
+### 给普通玩家发一封系统邮件
+### rewards 现在支持多种奖励条目，先用最基础的 gold / item 跑通。
+###
+
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "player_id": "{{registerPlayer.response.body.$.data.player.player_id}}",
+  "sender_name": "系统",
+  "title": "联调奖励邮件",
+  "body": "这是通过 admin_debug.http 发出的测试邮件。",
+  "rewards": [
+    {
+      "type": "gold",
+      "amount": 1000
+    },
+    {
+      "type": "item",
+      "item_id": "potion_small",
+      "amount": 3
+    }
+  ],
+  "expires_in_seconds": 604800
+}
+
+###
+### 单人禁言
+### 这里默认禁言大厅 global 频道 10 分钟。
+###
+
+POST {{baseUrl}}/chat/mute
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "channel_kind": "lobby",
+  "scope_id": "global",
+  "muted_player_id": "{{registerPlayer.response.body.$.data.player.player_id}}",
+  "reason": "本地联调禁言测试",
+  "duration_seconds": 600
+}
+
+###
+### GM 公告
+### 默认发到大厅 global 频道。
+###
+
+POST {{baseUrl}}/chat/gm/announce
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "channel_kind": "lobby",
+  "scope_id": "global",
+  "text": "这是一条来自 admin_debug.http 的 GM 公告。"
+}
+
+###
+### 查看公告 Redis 最近窗口缓存
+### 用来确认 recent_key / warm_key 和当前缓存内容。
+###
+
+GET {{baseUrl}}/debug/announcement-cache?channel_kind=lobby&scope_id=global&limit=5
+
+###
+### 封号 / 冻结账号
+### status 允许 active / frozen / banned。
+### 这里用普通玩家账号做测试。
+###
+
+POST {{baseUrl}}/auth/admin/account-status
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "account_id": "{{registerPlayer.response.body.$.data.account.account_id}}",
+  "status": "frozen",
+  "reason": "本地联调冻结测试"
+}
+
+###
+### 解封回 active
+###
+
+POST {{baseUrl}}/auth/admin/account-status
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "account_id": "{{registerPlayer.response.body.$.data.account.account_id}}",
+  "status": "active",
+  "reason": "本地联调恢复测试"
+}
+
+###
+### 查任务列表
+### 这里主要看后台任务页的 total/items、kind/status、result_json 展示。
+###
+
+POST {{baseUrl}}/admin/tasks/query
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "limit": 20,
+  "offset": 0
+}
+
+###
+### 只看失败任务
+### 方便你专门联调后台页面刚做的“失败任务聚焦”能力。
+###
+
+POST {{baseUrl}}/admin/tasks/query
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "status": "failed",
+  "limit": 20,
+  "offset": 0
+}
+
+###
+### 重试某个后台任务
+### 1. 先从“查任务列表”里拿 task_id。
+### 2. failed_only=true 时，会优先只重试上次 result_json 里 success=false 的那些玩家。
+### 3. announce 这种没有 player 明细的任务，会直接整单重投。
+###
+
+POST {{baseUrl}}/admin/tasks/retry
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "task_id": "请替换成真实 task_id",
+  "failed_only": true
+}
+
+###
+### 查审计日志
+### 适合确认 bootstrap、封号、禁言、发邮件、公告这些动作有没有正确落审计。
+###
+
+POST {{baseUrl}}/admin/audit-logs/query
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "limit": 20,
+  "offset": 0
+}
+
+###
+### 只看账号状态变更审计
+###
+
+POST {{baseUrl}}/admin/audit-logs/query
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.session.token}}
+
+{
+  "action": "account_status",
+  "limit": 20,
+  "offset": 0
+}

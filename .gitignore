@@ -1,0 +1,37 @@
+# Build outputs
+/build/
+/build-*/
+/output/
+/out/
+
+# Local runtime data / logs
+/tmp/
+/*.log
+*.stdout.log
+*.stderr.log
+
+# Generated local databases / backups
+/backups/
+/.redis-ha/
+/.sentinel-test/
+
+# Secrets and certs
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+
+# IDE / OS
+/.vscode/
+/.vs/
+.DS_Store
+Thumbs.db
+
+# Local benchmark scratch files
+/_bench_ctx.json
+/_bench_ids.json
+/_bench_writes.py
+/_ocr_img.py
+/_setup_ids.py
