@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
     [string]$AdminLogin = "admin_demo",
-    [string]$AdminPassword = "AdminDemo_123456"
+    [string]$AdminPassword = $(if ($env:HELLO_SERVICE_DEV_ADMIN_PASSWORD) { $env:HELLO_SERVICE_DEV_ADMIN_PASSWORD } else { 'change_me_admin_password' })
 )
 
 Set-StrictMode -Version Latest

@@ -18,7 +18,8 @@ try {
         catch { if ($index -eq 29) { throw "测试服务未能启动" }; Start-Sleep -Milliseconds 250 }
     }
 
-    $admin = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$Port/admin/login" -ContentType "application/json" -Body (@{ login_name = "admin_demo"; password = "AdminDemo_123456" } | ConvertTo-Json)
+    $adminPassword = if ($env:HELLO_SERVICE_DEV_ADMIN_PASSWORD) { $env:HELLO_SERVICE_DEV_ADMIN_PASSWORD } else { 'change_me_admin_password' }
+    $admin = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$Port/admin/login" -ContentType "application/json" -Body (@{ login_name = "admin_demo"; password = $adminPassword } | ConvertTo-Json)
     $headers = @{ Authorization = "Bearer $($admin.data.session.token)" }
 
     $definitions = @(

@@ -170,7 +170,7 @@ GET http://120.26.173.47/health
 {
   "login_name": "alice",
   "display_name": "Alice",
-  "password": "Passw0rd!123",
+  "password": "change_me",
   "email": "",
   "phone_number": "",
   "platform_channel": "ue",
@@ -195,7 +195,7 @@ GET http://120.26.173.47/health
 ```json
 {
   "login_name": "alice",
-  "password": "Passw0rd!123",
+  "password": "change_me",
   "single_session": false
 }
 ```

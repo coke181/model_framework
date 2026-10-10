@@ -13,21 +13,21 @@
 ### 使用说明：
 ### 1. 如果某个注册请求提示 login_name 已存在，直接改下面变量重新发一次即可。
 ### 2. 这个文件默认假设服务监听在 127.0.0.1:8080。
-### 3. 当前 F5 调试配置里默认注入了 HELLO_SERVICE_GM_TOKEN=dev-gm-token，所以这里也默认用这个值。
+### 3. 当前 F5 调试配置里默认注入了 HELLO_SERVICE_GM_TOKEN=change_me_gm_token，所以这里也默认用这个值。
 
 @host = 127.0.0.1
 @port = 8080
 @baseUrl = http://{{host}}:{{port}}
-@gmToken = dev-gm-token
+@gmToken = change_me_gm_token
 
 ### 建议第一次先不要改，跑通后再替换成你自己的联调账号。
 @adminLoginName = admin_demo
 @adminDisplayName = 管理员演示号
-@adminPassword = AdminDemo_123456
+@adminPassword = change_me_admin_password
 
 @playerLoginName = player_demo
 @playerDisplayName = 玩家演示号
-@playerPassword = PlayerDemo_123456
+@playerPassword = change_me_player_password
 
 ### 说明：
 ### 1. 下面很多请求都引用前面请求的响应值。

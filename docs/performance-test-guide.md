@@ -453,7 +453,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-hello-service-cluster.p
 
 ```powershell
 python .\scripts\perf-refresh-chain.py `
-  --login-name <测试账号> --password 'PerfPass_123456!' `
+  --login-name <测试账号> --password 'change_me' `
   --requests 1000 --replay-concurrency 16
 
 python .\scripts\perf-refresh-multi.py `

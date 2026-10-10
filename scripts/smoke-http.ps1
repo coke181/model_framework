@@ -3,7 +3,7 @@ param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
     [string]$LoginName = "alice",
     [string]$DisplayName = "Alice",
-    [string]$Password = "Passw0rd!123"
+    [string]$Password = $(if ($env:HELLO_SERVICE_SMOKE_PASSWORD) { $env:HELLO_SERVICE_SMOKE_PASSWORD } else { 'change_me' })
 )
 
 # 文件职责：

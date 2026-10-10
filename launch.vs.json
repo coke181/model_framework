@@ -10,7 +10,7 @@
       "args": [],
       "currentDir": "${workspaceRoot}",
       "env": {
-        "HELLO_SERVICE_GM_TOKEN": "dev-gm-token"
+        "HELLO_SERVICE_GM_TOKEN": "change_me_gm_token"
       }
     }
   ]

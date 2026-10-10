@@ -1,6 +1,20 @@
 # model_framework
 
-一个基于现代 C++20 和 Boost 的游戏业务后端骨架，目标是给 UE 等项目复用，而不是只服务单个 demo。
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)]()
+[![Boost](https://img.shields.io/badge/Boost-Asio%2FBeast-green)]()
+[![Storage](https://img.shields.io/badge/Storage-MySQL%20%7C%20Redis-orange)]()
+[![Observability](https://img.shields.io/badge/OpenTelemetry-OTLP-purple)]()
+
+面向 UE 等游戏客户端、基于现代 C++20 和 Boost 的可复用游戏业务后端骨架。核心目标是让网络层、业务层和存储层可拆分、可替换、可观测，而不是只服务单个 demo。
+
+## 项目亮点
+
+- **网络与背压**：Boost.Asio 线程池 + Boost.Beast HTTP/WebSocket，限制 `max_inflight`、`max_pending`，写请求按 key 串行化和限流。
+- **存储抽象**：Repository 接口统一 `in_memory` 与 `MySQL + Redis`，账号、会话、好友、聊天、邮件按数据性质分工。
+- **安全链路**：Argon2id、注册 / 登录 / 改密 / 会话刷新、封禁黑名单、验证码、登录限流。
+- **可靠消息**：聊天 MySQL Outbox + `SKIP LOCKED` + 主键幂等，支持进程重启恢复与失败重试。
+- **可观测性**：OpenTelemetry OTLP tracing/metrics，响应返回 `X-Trace-Id` 与 `X-Response-Time-Ms`，保留本地 `/metrics`。
+- **性能与正确性**：定位并修复并发背包写覆盖、MySQL Prepared Statement 泄漏，详见 [性能基线](docs/performance-baseline-20260924.md)。
 
 ## 项目定位
 
@@ -52,6 +66,18 @@
 - LiveKit 语音鉴权第一阶段：成员资格、短期 JWT、服务端禁言/封禁和审核记录
 - 仓储接口和内存实现，结构上已经按 `MySQL + Redis` 分工整理
 - `Application` 作为统一启动入口
+
+## 本地配置与安全
+
+仓库只保留 `change_me` 占位值，不包含真实开发/生产密码。运行前请通过环境变量注入：
+
+```powershell
+$env:HELLO_SERVICE_MYSQL_PASSWORD = "..."
+$env:HELLO_SERVICE_DEV_ADMIN_PASSWORD = "..."
+$env:HELLO_SERVICE_GM_TOKEN = "..."
+```
+
+不要提交 `.env`、`.pem`、`.key` 或真实 token；这些文件已在 `.gitignore` 中排除。
 
 ## 当前已完成 / 还缺什么
 
@@ -286,12 +312,12 @@ $env:HELLO_SERVICE_PORT='9090'
 $env:HELLO_SERVICE_THREADS='4'
 $env:HELLO_SERVICE_NAME='hello-from-env'
 $env:HELLO_SERVICE_ENV='development'
-$env:HELLO_SERVICE_GM_TOKEN='gm-secret'
+$env:HELLO_SERVICE_GM_TOKEN='change_me_gm_token'
 $env:HELLO_SERVICE_STORAGE_MODE='mysql_redis'
 $env:HELLO_SERVICE_MYSQL_HOST='127.0.0.1'
 $env:HELLO_SERVICE_MYSQL_PORT='3306'
 $env:HELLO_SERVICE_MYSQL_USER='game_backend'
-$env:HELLO_SERVICE_MYSQL_PASSWORD='GameBackend_2026!'
+$env:HELLO_SERVICE_MYSQL_PASSWORD='change_me_mysql_password'
 $env:HELLO_SERVICE_MYSQL_DATABASE='game_backend'
 $env:HELLO_SERVICE_MYSQL_AUTO_MIGRATE='1'
 $env:HELLO_SERVICE_MYSQL_SCHEMA_FILE='db/mysql/001_game_backend.sql'
@@ -300,7 +326,7 @@ $env:HELLO_SERVICE_REDIS_PORT='6379'
 $env:HELLO_SERVICE_REDIS_DB='0'
 $env:HELLO_SERVICE_AUTO_BOOTSTRAP_DEV_ADMIN='true'
 $env:HELLO_SERVICE_DEV_ADMIN_LOGIN='admin_demo'
-$env:HELLO_SERVICE_DEV_ADMIN_PASSWORD='AdminDemo_123456'
+$env:HELLO_SERVICE_DEV_ADMIN_PASSWORD='change_me_admin_password'
 ```
 
 注意：
@@ -404,7 +430,7 @@ cmake --build build --config Debug
 - 当前本地开发数据库默认信息如下：
 - `root` 密码：`D_mysql_root_2026!`
 - 应用账号：`game_backend`
-- 应用密码：`GameBackend_2026!`
+- 应用密码：`change_me_mysql_password`
 
 ### Redis 主从 + Sentinel 高可用
 
@@ -434,13 +460,13 @@ cmake --build build --config Debug
 正式注册：
 
 ```powershell
-$register = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/register -ContentType 'application/json' -Body '{"login_name":"alice","display_name":"Alice","password":"Passw0rd!123"}'
+$register = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/register -ContentType 'application/json' -Body '{"login_name":"alice","display_name":"Alice","password":"change_me"}'
 ```
 
 正式登录：
 
 ```powershell
-$login = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/login -ContentType 'application/json' -Body '{"login_name":"alice","password":"Passw0rd!123"}'
+$login = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/login -ContentType 'application/json' -Body '{"login_name":"alice","password":"change_me"}'
 $token = $login.data.session.token
 $refreshToken = $login.data.session.refresh_token
 ```
@@ -466,7 +492,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/refresh -ContentT
 修改密码：
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/change-password -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json' -Body '{"current_password":"Passw0rd!123","new_password":"Passw0rd!456"}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/auth/change-password -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json' -Body '{"current_password":"change_me","new_password":"change_me_2"}'
 ```
 
 ## WebSocket 聊天协议

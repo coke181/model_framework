@@ -47,7 +47,7 @@ void ensure_dev_admin_account(
     const auto enabled = [runtime_environment] {
         // production 下强制关闭开发管理员自动创建。
         // 这样即使 deploy.env 误写 HELLO_SERVICE_AUTO_BOOTSTRAP_DEV_ADMIN=1，
-        // 正式服也不会把默认账号 admin_demo / AdminDemo_123456 暴露出来。
+        // 正式服也不会自动创建默认开发管理员账号。
         if (mf::core::is_production(runtime_environment)) {
             return false;
         }
@@ -74,7 +74,7 @@ void ensure_dev_admin_account(
         if (const char* value = std::getenv("HELLO_SERVICE_DEV_ADMIN_PASSWORD")) {
             return std::string{value};
         }
-        return std::string{"AdminDemo_123456"};
+        return std::string{"change_me_admin_password"};
     }();
     const auto display_name = [] {
         if (const char* value = std::getenv("HELLO_SERVICE_DEV_ADMIN_DISPLAY_NAME")) {

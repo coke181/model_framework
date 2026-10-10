@@ -9,7 +9,7 @@ param(
     [string]$MySqlHost = "127.0.0.1",
     [int]$MySqlPort = 3306,
     [string]$MySqlUser = "game_backend",
-    [string]$MySqlPassword = "GameBackend_2026!",
+    [string]$MySqlPassword = $(if ($env:HELLO_SERVICE_MYSQL_PASSWORD) { $env:HELLO_SERVICE_MYSQL_PASSWORD } else { 'change_me_mysql_password' }),
     [string]$MySqlDatabase = "game_backend",
     [string]$RedisHost = "127.0.0.1",
     [int]$RedisPort = 6379,

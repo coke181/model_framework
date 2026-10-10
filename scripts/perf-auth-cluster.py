@@ -10,7 +10,7 @@ import pymysql
 import requests
 
 
-PASSWORD = "PerfPass_123456!"
+PASSWORD = os.getenv("PERF_TEST_PASSWORD", "change_me")
 local = threading.local()
 
 
@@ -38,7 +38,7 @@ def main():
     parser.add_argument("--mysql-host", default=os.getenv("PERF_MYSQL_HOST", "127.0.0.1"))
     parser.add_argument("--mysql-port", type=int, default=int(os.getenv("PERF_MYSQL_PORT", "3306")))
     parser.add_argument("--mysql-user", default=os.getenv("PERF_MYSQL_USER", "game_backend"))
-    parser.add_argument("--mysql-password", default=os.getenv("PERF_MYSQL_PASSWORD", "GameBackend_2026!"))
+    parser.add_argument("--mysql-password", default=os.getenv("PERF_MYSQL_PASSWORD", "change_me"))
     parser.add_argument("--mysql-database", default=os.getenv("PERF_MYSQL_DATABASE", "game_backend"))
     args = parser.parse_args()
     bases = [f"http://127.0.0.1:{port}" for port in args.ports.split(",")]

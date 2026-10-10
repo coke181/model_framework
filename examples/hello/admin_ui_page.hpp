@@ -640,7 +640,7 @@ inline std::string hello_admin_ui_page_html() {
           <div class="sheet-bar">
             <strong>玩家信息表</strong>
             <input id="sheetLoginName" value="admin_demo" placeholder="管理员账号" />
-            <input id="sheetLoginPassword" type="password" value="AdminDemo_123456" placeholder="管理员密码" />
+            <input id="sheetLoginPassword" type="password" value="" placeholder="管理员密码" />
             <input id="sheetLookupId" placeholder="8位玩家ID，例如 21706635" />
             <input id="sheetLimit" type="number" value="50" />
             <button id="sheetLoginBtn">登录</button>
@@ -898,7 +898,7 @@ inline std::string hello_admin_ui_page_html() {
                 </div>
                 <div class="field">
                   <label for="loginPassword">密码</label>
-                  <input id="loginPassword" type="password" value="AdminDemo_123456" />
+                  <input id="loginPassword" type="password" value="" />
                 </div>
               </div>
               <div class="actions">
