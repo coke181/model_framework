@@ -9,6 +9,8 @@
 /*.log
 *.stdout.log
 *.stderr.log
+__pycache__/
+*.pyc
 
 # Generated local databases / backups
 /backups/
@@ -35,3 +37,4 @@ Thumbs.db
 /_bench_writes.py
 /_ocr_img.py
 /_setup_ids.py
+/scripts/perf-*.json
