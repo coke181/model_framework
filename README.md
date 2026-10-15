@@ -4,8 +4,32 @@
 [![Boost](https://img.shields.io/badge/Boost-Asio%2FBeast-green)]()
 [![Storage](https://img.shields.io/badge/Storage-MySQL%20%7C%20Redis-orange)]()
 [![Observability](https://img.shields.io/badge/OpenTelemetry-OTLP-purple)]()
+[![CI](https://github.com/coke181/model_framework/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/coke181/model_framework/actions/workflows/backend-tests.yml)
 
 面向 UE 等游戏客户端、基于现代 C++20 和 Boost 的可复用游戏业务后端骨架。核心目标是让网络层、业务层和存储层可拆分、可替换、可观测，而不是只服务单个 demo。
+
+## 架构总览
+
+```mermaid
+graph TD
+    Client[UE / 浏览器 / 客户端] -->|HTTP / WebSocket| GW[hello_service]
+    GW --> Auth[认证与会话]
+    GW --> Player[玩家 / 背包 / 货币]
+    GW --> Social[好友 / 聊天 / 在线状态]
+    GW --> Game[邮件 / 奖励 / 任务 / 商城 / 抽卡 / 掉落]
+    GW --> Admin[GM 后台 / 审计 / 公告]
+    Auth --> Repo[Repository 仓储接口]
+    Player --> Repo
+    Social --> Repo
+    Game --> Repo
+    Admin --> Repo
+    Repo -->|in_memory| Mem[(内存实现)]
+    Repo -->|MySQL| MySQL[(MySQL)]
+    Repo -->|Redis| Redis[(Redis)]
+    GW --> Obs[OpenTelemetry / metrics / tracing]
+```
+
+完整接口清单见 [docs/api.md](docs/api.md)。
 
 ## 项目亮点
 
