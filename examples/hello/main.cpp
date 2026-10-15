@@ -156,7 +156,7 @@ void ensure_dev_admin_account(
     repositories.admins->upsert_admin(account->account_id, "dev_admin", true, kDevAdminPermissions);
     logger->log(
         mf::core::LogLevel::info,
-        "dev admin is ready login_name=" + login_name + " password=" + password);
+        "dev admin is ready login_name=" + login_name);
 }
 
 std::string normalized_target(const mf::http::Request& request) {

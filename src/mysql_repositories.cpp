@@ -4965,10 +4965,11 @@ public:
                     }
                 }
 
-                // 3. 幂等发奖：INSERT IGNORE 抢占 grant_id，抢占成功才改玩家资产。
+                // 3. 只忽略重复主键，其他约束错误必须抛出并回滚整个购买事务。
                 const auto insert_grant_statement = StatementCache::prepare(connection,
-                    "INSERT IGNORE INTO reward_grant(grant_id, player_id, source_type, source_id, rewards_json, granted_at) "
-                    "VALUES (?, ?, 'shop', ?, CAST(? AS JSON), FROM_UNIXTIME(?))");
+                    "INSERT INTO reward_grant(grant_id, player_id, source_type, source_id, rewards_json, granted_at) "
+                    "VALUES (?, ?, 'shop', ?, CAST(? AS JSON), FROM_UNIXTIME(?)) "
+                    "ON DUPLICATE KEY UPDATE grant_id = grant_id");
                 mysql::results insert_grant_result;
                 connection.execute(
                     insert_grant_statement.bind(

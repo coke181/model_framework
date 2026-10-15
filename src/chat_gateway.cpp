@@ -22,6 +22,7 @@
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_to.hpp>
 
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <mutex>
@@ -318,7 +319,9 @@ private:
             const auto payload = parsed.as_object();
             const auto type = require_ws_string(payload, "type");
 
-            if (type == "auth") {
+            if (type != "auth" && !validate_session()) {
+                // validate_session 已返回协议错误；保持连接以允许重新鉴权。
+            } else if (type == "auth") {
                 handle_auth(payload);
             } else if (type == "join") {
                 handle_join(payload);
@@ -352,9 +355,10 @@ private:
 
     void handle_auth(const boost::json::object& payload) {
         const auto token = require_ws_string(payload, "token");
-        const auto authenticated = token_service_->authenticate_bearer("Bearer " + token);
+        const auto authenticated = token_service_->authenticate_bearer("Bearer " + token, false);
 
         if (!authenticated) {
+            clear_identity();
             send_json({
                 {"type", "auth_result"},
                 {"ok", false},
@@ -386,6 +390,29 @@ private:
         });
     }
 
+    void clear_identity() {
+        leave_channel();
+        if (session_ && online_marked_) {
+            state_service_->mark_offline(session_->player_id);
+            online_marked_ = false;
+        }
+        session_.reset();
+    }
+
+    bool validate_session() {
+        // HTTP 登出/刷新发生在另一进程，不能相信网关本地的旧 Session。
+        if (session_ && token_service_->authenticate_bearer("Bearer " + session_->token, false)) {
+            return true;
+        }
+        clear_identity();
+        send_json({
+            {"type", "error"},
+            {"code", "unauthorized"},
+            {"message", "请先完成有效鉴权"},
+        });
+        return false;
+    }
+
     void handle_join(const boost::json::object& payload) {
         if (!session_) {
             send_json({
@@ -411,13 +438,27 @@ private:
         active_channel_spec_ = *channel;
         state_service_->join_channel(*channel, session_->player_id);
         state_service_->mark_channel_read(session_->player_id, channel->channel_id);
+        const auto generation = ++subscription_generation_;
         subscription_id_ = chat_service_->subscribe(
             *channel,
-            [weak = weak_from_this()](const mf::game::ChatMessage& message) {
+            [weak = weak_from_this(), generation](const mf::game::ChatMessage& message) {
                 if (const auto self = weak.lock()) {
-                    self->send_json({
-                        {"type", "message"},
-                        {"message", mf::game::to_json(message)},
+                    // 广播来自其他连接/线程；身份和订阅只能在本连接的strand访问。
+                    net::post(self->websocket_.get_executor(), [self, message, generation] {
+                        if (self->closed_ || generation != self->subscription_generation_) {
+                            return;
+                        }
+                        try {
+                            if (self->validate_session()) {
+                                self->send_json({
+                                    {"type", "message"},
+                                    {"message", mf::game::to_json(message)},
+                                });
+                            }
+                        } catch (const std::exception&) {
+                            // 存储不可用时不能沿用旧身份推送，也不能让异常逃出io_context。
+                            self->close_transport();
+                        }
                     });
                 }
             });
@@ -590,6 +631,7 @@ private:
     }
 
     void leave_channel() {
+        ++subscription_generation_;
         if (!active_channel_.empty() && subscription_id_ != 0 && session_) {
             chat_service_->unsubscribe(active_channel_, subscription_id_);
             state_service_->leave_channel(active_channel_, session_->player_id);
@@ -665,6 +707,7 @@ private:
     std::string active_channel_;
     mf::game::ChatChannel active_channel_spec_;
     std::size_t subscription_id_ = 0;
+    std::uint64_t subscription_generation_ = 0;
     std::deque<std::string> outbox_;
     std::atomic<std::size_t> queued_outbox_bytes_{0};
     std::atomic<std::size_t> queued_outbox_messages_{0};

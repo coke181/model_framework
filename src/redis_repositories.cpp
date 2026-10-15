@@ -573,6 +573,15 @@ end
 return is_online
 )LUA";
 
+// Atomically consume a batch so competing clients cannot read the same prefix.
+// Retrieval is not a read acknowledgement; mark_channel_read remains explicit.
+constexpr std::string_view kPullOfflineMessagesScript = R"LUA(
+local count = tonumber(ARGV[1])
+local messages = redis.call('LRANGE', KEYS[1], 0, count - 1)
+redis.call('LTRIM', KEYS[1], count, -1)
+return messages
+)LUA";
+
 std::string recent_announcements_key(const std::string& kind, const std::string& scope) {
     return "announcement:recent:" + kind + ":" + scope;
 }
@@ -2071,21 +2080,19 @@ public:
     std::vector<mf::game::ChatMessage> pull_offline_messages(
         const std::string& player_id,
         std::size_t limit) override {
-        const auto bounded_limit = std::max<std::size_t>(1, limit);
+        if (limit == 0) {
+            return {};
+        }
 
         redis::request request;
-        request.push("LRANGE", offline_messages_key(player_id), "0", std::to_string(bounded_limit - 1));
-        request.push("LTRIM", offline_messages_key(player_id), std::to_string(bounded_limit), "-1");
-        redis::response<std::vector<std::optional<std::string>>, std::string> response;
+        request.push("EVAL", std::string{kPullOfflineMessagesScript}, "1",
+            offline_messages_key(player_id), std::to_string(limit));
+        redis::response<std::vector<std::optional<std::string>>> response;
         connection_->exec(request, response);
 
-        auto messages = decode_chat_messages(
+        return decode_chat_messages(
             result_value_or_none(std::get<0>(response)).value_or(std::vector<std::optional<std::string>>{}),
             false);
-        for (const auto& message : messages) {
-            mark_channel_read(player_id, message.channel.channel_id);
-        }
-        return messages;
     }
 
     bool is_online(const std::string& player_id) const override {

@@ -54,6 +54,8 @@ public:
     virtual std::vector<mf::game::ChannelUnreadCount> list_unread_counts_for_channels(
         const std::string& player_id,
         const std::vector<std::string>& channel_ids) const = 0;
+    // 消费离线通知但不改变未读数；打开频道或显式 mark_channel_read 才确认已读。
+    // 不提供客户端 ACK，响应丢失时不保证消息重投。
     virtual std::vector<mf::game::ChatMessage> pull_offline_messages(
         const std::string& player_id,
         std::size_t limit) = 0;

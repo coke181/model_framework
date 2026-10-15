@@ -249,9 +249,6 @@ public:
             shard.offline_messages.erase(player_id);
         }
 
-        for (const auto& message : result) {
-            shard.unread_counts[player_id].erase(message.channel.channel_id);
-        }
         return result;
     }
 

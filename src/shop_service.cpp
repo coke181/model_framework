@@ -62,7 +62,7 @@ std::vector<ShopProduct> ShopService::list_products(bool include_disabled) const
 }
 
 // 执行一次购买。
-// 当前版本扣费、发奖、写购买流水分三步完成；如果后续要求更强一致性，应在 MySQL 仓储里升级为事务或补偿任务。
+// 持久化模式统一通过事务完成扣费、发奖和流水；内存模式保留仓储组合实现。
 ServiceResult<ShopPurchaseResult> ShopService::purchase(
     const std::string& player_id,
     const std::string& product_id) {
@@ -116,7 +116,7 @@ ServiceResult<ShopPurchaseResult> ShopService::purchase(
         };
     }
 
-    if (product->purchase_limit > 0 && shop_transactions_) {
+    if (shop_transactions_) {
         return purchase_with_transaction(player_id, *product);
     }
 
@@ -200,7 +200,7 @@ ServiceResult<ShopPurchaseResult> ShopService::purchase(
     };
 }
 
-// 限购商品走原子事务购买，避免“先查再写”的软上限在并发下被突破。
+// 所有持久化商品走原子事务，限购名额、扣费、发奖和流水共同提交或回滚。
 ServiceResult<ShopPurchaseResult> ShopService::purchase_with_transaction(
     const std::string& player_id,
     const ShopProduct& product) {

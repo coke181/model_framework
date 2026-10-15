@@ -30,7 +30,9 @@ public:
         const mf::game::SessionIssueOptions& options = {},
         std::chrono::minutes ttl = std::chrono::minutes{180});
 
-    std::optional<mf::game::Session> authenticate_bearer(const std::string& authorization_header) const;
+    // 长连接跨进程撤销校验可禁用本地缓存，直接读取会话仓储。
+    std::optional<mf::game::Session> authenticate_bearer(
+        const std::string& authorization_header, bool use_cache = true) const;
     std::optional<mf::game::Session> refresh(
         const std::string& refresh_token,
         std::chrono::minutes ttl = std::chrono::minutes{180});

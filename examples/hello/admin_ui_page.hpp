@@ -548,6 +548,7 @@ inline std::string hello_admin_ui_page_html() {
     .sheet-mini-grid span { display: block; color: var(--muted); font-size: 12px; }
     .sheet-mini-grid code { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; }
     .legacy-layout { display: none; }
+    .legacy-layout.active { display: grid; }
     .card {
       border-radius: 12px;
       box-shadow: none;
@@ -1809,6 +1810,14 @@ inline std::string hello_admin_ui_page_html() {
     };
 
     const $ = (id) => document.getElementById(id);
+
+    function revealLegacySection(targetId) {
+      const target = $(targetId);
+      const legacyLayout = target?.closest(".legacy-layout");
+      if (legacyLayout) {
+        legacyLayout.classList.add("active");
+      }
+    }
 
     function refreshHeader() {
       $("baseState").textContent = state.baseUrl;
@@ -4839,6 +4848,12 @@ inline std::string hello_admin_ui_page_html() {
     });
 
     syncSelectionView();
+    document.querySelectorAll('.toolbar a[href^="#"]').forEach((link) => {
+      link.addEventListener("click", () => revealLegacySection(link.getAttribute("href").slice(1)));
+    });
+    if (window.location.hash) {
+      revealLegacySection(window.location.hash.slice(1));
+    }
     initializeRewardEditor("mail");
     initializeRewardEditor("sheet");
     initializeRewardEditor("shop");

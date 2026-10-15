@@ -94,9 +94,7 @@ Windows 本地备份默认写入 D 盘项目目录：
 
 ## 当前限制
 
-我不能直接 SSH 登录你的阿里云服务器替你执行命令，所以没法“远程代配”。
-
-但你现在可以把这套代码上传到 Linux 服务器，然后按下面步骤部署。
+以下是通用部署示例，不会自动修改线上配置。当前已核实服务器实际部署位于 `/opt/hello-service`，环境文件为 `/etc/hello-service/hello-service.env`；下面示例中的 `/opt/ue-game-backend` 仅是新部署建议路径，不能直接当作现有服务路径使用。
 
 ## 目录建议
 
@@ -266,6 +264,7 @@ sudo systemctl enable --now hello-service hello-chat-gateway hello-task-worker
   - `WorkingDirectory=/opt/ue-game-backend/model`
   - `EnvironmentFile=/opt/ue-game-backend/model/scripts/linux/deploy.env`
   - `ExecStart=/opt/ue-game-backend/model/scripts/linux/start-*.sh`
+- 当前服务器实际目录为 `/opt/hello-service`，正式环境文件在 `/etc/hello-service/hello-service.env`；部署前请读取已安装的systemd单元文件确认 `WorkingDirectory`、`EnvironmentFile` 和 `ExecStart`，不要照抄上面的示例路径。
 
 查看日志：
 
@@ -375,6 +374,10 @@ python3 /opt/hello-service/scripts/linux/long-business-load.py \
 进程、内存和磁盘快照。登录阶段会命中项目配置的成功校验缓存；如需专门测 Argon2
 每次校验，应使用足够多的不同账号并关闭成功校验缓存，而不是把本轮登录接口吞吐
 直接当作 Argon2 吞吐。
+
+## 隔离功能回归
+
+MySQL/Redis与WebSocket的8项真实链路测试可以通过 `scripts/linux/run-isolated-integration-tests.sh` 执行。该脚本需要MySQL本地管理员socket权限、空闲的非生产Redis DB和本地编译的两个服务二进制；只启动监听回环地址的临时进程，不重启线上服务。配置、前置检查、清理方式和报告位置见 `tests/integration/README.md`。当前云服务器实际部署路径与示例目录不同，测试请使用独立临时源码目录和 `HTTP_BIN`/`CHAT_BIN` 指向待验证二进制，勿直接构建覆盖生产二进制。
 
 ## 阿里云安全组
 

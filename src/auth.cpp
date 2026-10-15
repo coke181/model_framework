@@ -133,14 +133,15 @@ boost::asio::awaitable<mf::game::Session> TokenService::issue_async(
     co_return session;
 }
 
-std::optional<mf::game::Session> TokenService::authenticate_bearer(const std::string& authorization_header) const {
+std::optional<mf::game::Session> TokenService::authenticate_bearer(
+    const std::string& authorization_header, bool use_cache) const {
     MF_PROFILE_SCOPE("Auth authenticate bearer");
     const auto token = extract_bearer_token(authorization_header);
     if (!token) {
         return std::nullopt;
     }
 
-    {
+    if (use_cache) {
         const auto cache_now = std::chrono::steady_clock::now();
         std::shared_lock lock{cache_mutex_};
         if (const auto it = token_cache_.find(*token); it != token_cache_.end()) {
@@ -159,7 +160,9 @@ std::optional<mf::game::Session> TokenService::authenticate_bearer(const std::st
     if (!session || session->expires_at < std::chrono::system_clock::now()) {
         return std::nullopt;
     }
-    cache_session(*token, *session);
+    if (use_cache) {
+        cache_session(*token, *session);
+    }
     return session;
 }
 
