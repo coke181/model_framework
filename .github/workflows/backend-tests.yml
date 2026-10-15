@@ -1,0 +1,111 @@
+﻿name: Backend regression
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      BOOST_VERSION: 1.91.0
+      BOOST_SHA256: de5e6b0e4913395c6bdfa90537febd9028ea4c0735d2cdb0cd9b45d5f51264f5
+      HELLO_SERVICE_TEST_EXE: ${{ github.workspace }}/build/hello_service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements*.txt
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libssl-dev mysql-server redis-server
+      - name: Cache Boost headers and sources
+        id: boost
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/boost_1_91_0
+          key: boost-${{ runner.os }}-${{ env.BOOST_VERSION }}-${{ env.BOOST_SHA256 }}
+      - name: Download verified Boost release
+        if: steps.boost.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl --fail --location --retry 3 \
+            "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_1_91_0.tar.bz2" \
+            --output boost.tar.bz2
+          echo "${BOOST_SHA256}  boost.tar.bz2" | sha256sum --check
+          tar -xjf boost.tar.bz2
+      - name: Build backend and gateway
+        id: build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DMF_ENABLE_OTEL=OFF -DMF_BOOST_ROOT="${RUNNER_TEMP}/boost_1_91_0"
+          cmake --build build --target hello_service hello_chat_gateway --parallel 2
+      - name: Install test dependencies and Chromium
+        id: test_deps
+        run: |
+          python -m pip install -r tests/requirements-integration.txt
+          python -m playwright install --with-deps chromium
+          python - <<'PY'
+          import os
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              with open(os.environ['GITHUB_ENV'], 'a') as output:
+                  output.write('HELLO_SERVICE_TEST_BROWSER_EXECUTABLE=' + p.chromium.executable_path + '\n')
+          PY
+      - name: API and business regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.test_deps.outcome == 'success' }}
+        run: python -m pytest -q --junitxml=tests/.artifacts/fast.xml --html=tests/.artifacts/fast.html --self-contained-html
+      - name: Browser regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.test_deps.outcome == 'success' }}
+        run: python -m pytest tests/e2e -m browser -v --junitxml=tests/.artifacts/browser.xml --html=tests/.artifacts/browser.html --self-contained-html
+      - name: Isolated MySQL Redis and WebSocket regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.test_deps.outcome == 'success' }}
+        run: |
+          sudo systemctl start mysql redis-server
+          test_env=$(mktemp "${RUNNER_TEMP}/backend-test-env.XXXXXX")
+          trap 'rm -f "$test_env"' EXIT
+          cat > "$test_env" <<'ENV'
+          HELLO_SERVICE_MYSQL_HOST=127.0.0.1
+          HELLO_SERVICE_MYSQL_DATABASE=ci_production_sentinel
+          HELLO_SERVICE_REDIS_HOST=127.0.0.1
+          HELLO_SERVICE_REDIS_DB=0
+          ENV
+          sudo env PROJECT_ROOT="$GITHUB_WORKSPACE" BUILD_DIR="$GITHUB_WORKSPACE/build" \
+            ENV_FILE="$test_env" PYTHON_BIN="$(command -v python)" \
+            bash scripts/linux/run-isolated-integration-tests.sh
+      - name: Require all suites without skipped cases
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.test_deps.outcome == 'success' }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          artifacts = Path('tests/.artifacts')
+          reports = [artifacts / 'fast.xml', artifacts / 'browser.xml']
+          integration = list(artifacts.glob('integration-*.xml'))
+          assert integration, 'No integration report was produced'
+          for report in reports + integration:
+              cases = ET.parse(report).findall('.//testcase')
+              assert cases, f'Empty test report: {report}'
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), f'Failed or skipped tests in {report}'
+          PY
+      - name: Upload reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: tests/.artifacts/
+          retention-days: 14
+          if-no-files-found: warn

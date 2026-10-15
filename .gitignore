@@ -11,6 +11,7 @@
 *.stderr.log
 __pycache__/
 *.pyc
+/tests/.artifacts/
 
 # Generated local databases / backups
 /backups/

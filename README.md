@@ -151,6 +151,20 @@ docs/review         review 导读文档
 
 - CMake 3.21+
 
+## 自动化测试
+
+跨平台的接口自动化测试，用 `pytest + requests` 编写，不依赖 PowerShell：
+
+```bash
+python -m pip install -r tests/requirements.txt
+python -m pytest tests -v
+```
+
+- 默认用 `in_memory` 内存模式启动服务，不依赖 MySQL / Redis，任何装了 Python 的机器都能跑
+- 覆盖系统/健康检查、认证、任务、邮件、掉落、奖励、商城、抽卡、好友、聊天、后台管理查询等模块
+- 当前 **24 个用例全部通过**
+- 用例与模块说明见 [tests/README.md](tests/README.md)
+
 ## Tracy CPU 性能分析（VS Code）
 
 ### 自动采样函数热点（Windows）
