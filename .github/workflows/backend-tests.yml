@@ -114,6 +114,7 @@ jobs:
         if: always()
         env:
           TEST_PLATFORM_URL: ${{ secrets.TEST_PLATFORM_URL }}
+          TEST_PLATFORM_TOKEN: ${{ secrets.TEST_PLATFORM_TOKEN }}
         run: |
           python scripts/report_to_platform.py \
             --project model \
