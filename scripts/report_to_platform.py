@@ -15,6 +15,7 @@ import os
 import sys
 import urllib.parse
 import urllib.request
+import uuid
 import xml.etree.ElementTree as ET
 
 
@@ -69,15 +70,17 @@ def main():
         return 0
 
     xml_text = ET.tostring(merged, encoding="unicode")
-    data = urllib.parse.urlencode({
-        "project": args.project,
-        "name": args.name,
-        "xml": xml_text,
-    }).encode("utf-8")
-    headers = {}
+    boundary = "----codex" + uuid.uuid4().hex
+    body = b""
+    for key, value in (("project", args.project), ("name", args.name), ("xml", xml_text)):
+        body += ("--%s\r\n" % boundary).encode("utf-8")
+        body += ("Content-Disposition: form-data; name=\"%s\"\r\n\r\n" % key).encode("utf-8")
+        body += value.encode("utf-8") + b"\r\n"
+    body += ("--%s--\r\n" % boundary).encode("utf-8")
+    headers = {"Content-Type": "multipart/form-data; boundary=" + boundary}
     if args.token:
         headers["Authorization"] = "Bearer " + args.token
-    request = urllib.request.Request(args.api.rstrip("/") + "/api/import", data=data, headers=headers)
+    request = urllib.request.Request(args.api.rstrip("/") + "/api/import", data=body, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=30) as resp:
             print("reported:", resp.read().decode("utf-8"))
