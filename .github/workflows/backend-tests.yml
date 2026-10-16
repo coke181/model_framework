@@ -4,6 +4,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 16 * * *'
 
 permissions:
   contents: read
@@ -112,6 +114,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Report to test platform
+        id: report
         if: always()
         env:
           TEST_PLATFORM_URL: ${{ secrets.TEST_PLATFORM_URL }}
@@ -120,6 +123,14 @@ jobs:
           python scripts/report_to_platform.py \
             --project model \
             --name "backend-ci-${{ github.run_number }}" \
+            --evidence-dir tests/.artifacts \
             tests/.artifacts/fast.xml \
             tests/.artifacts/browser.xml \
             tests/.artifacts/integration-*.xml
+
+      - name: Regression check and alert
+        if: steps.report.outcome == 'success'
+        env:
+          TEST_PLATFORM_URL: ${{ secrets.TEST_PLATFORM_URL }}
+          TEST_PLATFORM_TOKEN: ${{ secrets.TEST_PLATFORM_TOKEN }}
+        run: python scripts/regression_check.py --project model

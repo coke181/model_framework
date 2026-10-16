@@ -52,7 +52,7 @@ Windows PowerShell 可以把换行符替换为反引号，或直接写成一行�
 
 `.github/workflows/backend-tests.yml` 在 push、pull request 或手动触发时执行。使用 Ubuntu 24.04、Python 3.12、固定版本及 SHA256 的 Boost 1.91.0，关闭可选 OpenTelemetry 后构建服务与网关。浏览器使用 Playwright 下载的 Chromium，通过 `HELLO_SERVICE_TEST_BROWSER_EXECUTABLE` 显式指定。
 
-CI 启动运行器本机 MySQL/Redis，再调用隔离脚本创建临时测试库、账号和独立 Redis DB，不需要云服务器 SSH 凭据。PyMySQL 安装 RSA 扩展以支持 MySQL 8 默认认证。三层测试都会生成 HTML/JUnit，浏览器用例另存截图；结果上传到 `backend-test-reports`，保留14天，最终检查禁止将跳过用例当作通过。工作流需提交到 GitHub 后才能在 Actions 页面实际运行。
+CI 启动运行器本机 MySQL/Redis，再调用隔离脚本创建临时测试库、账号和独立 Redis DB，不需要云服务器 SSH 凭据。PyMySQL 安装 RSA 扩展以支持 MySQL 8 默认认证。三层测试都会生成 HTML/JUnit，浏览器用例另存截图；结果上传到 `backend-test-reports`，保留14天，最终检查禁止将跳过用例当作通过。工作流需提交到 GitHub 后才能在 Actions 页面实际运行。上报平台后，`report_to_platform.py` 会自动把失败用例的截图（`tests/.artifacts/screenshots/<用例名>.png`）关联到具体失败用例，并把 `service.log` 作为运行级证据上传；`regression_check.py` 对比最近两次运行输出「新增失败 / 仍失败 / 已修复」，有失败时让 CI 步骤变红触发通知。工作流每天 00:00（北京时间）定时跑一次，持续积累回归数据。
 
 ## 框架结构
 
