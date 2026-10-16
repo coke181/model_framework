@@ -51,6 +51,8 @@ def main():
     parser.add_argument("--project", default="model")
     parser.add_argument("--name", default="backend-ci")
     args = parser.parse_args()
+    args.api = (args.api or "").strip().rstrip("/")
+    args.token = (args.token or "").strip().lstrip("\ufeff")
 
     if not args.api:
         print("[SKIP] TEST_PLATFORM_URL not set; skip reporting to platform.")
