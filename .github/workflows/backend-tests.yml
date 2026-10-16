@@ -109,3 +109,15 @@ jobs:
           path: tests/.artifacts/
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Report to test platform
+        if: always()
+        env:
+          TEST_PLATFORM_URL: ${{ secrets.TEST_PLATFORM_URL }}
+        run: |
+          python scripts/report_to_platform.py \
+            --project model \
+            --name "backend-ci-${{ github.run_number }}" \
+            tests/.artifacts/fast.xml \
+            tests/.artifacts/browser.xml \
+            tests/.artifacts/integration-*.xml
