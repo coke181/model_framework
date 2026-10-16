@@ -74,6 +74,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.test_deps.outcome == 'success' }}
         run: |
           sudo systemctl start mysql redis-server
+          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY ''; FLUSH PRIVILEGES;" || true
           test_env=$(mktemp "${RUNNER_TEMP}/backend-test-env.XXXXXX")
           trap 'rm -f "$test_env"' EXIT
           cat > "$test_env" <<'ENV'
